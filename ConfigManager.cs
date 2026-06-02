@@ -12,7 +12,18 @@ namespace MochaScheduler
         private System.Threading.Timer? _debounceTimer;
         private readonly object _lock = new();
 
-        public AppConfig Config { get; private set; } = new();
+        private AppConfig _config = new();
+
+        public AppConfig Config
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _config.Clone();
+                }
+            }
+        }
 
         public event EventHandler<AppConfig>? ConfigChanged;
 
@@ -49,9 +60,9 @@ namespace MochaScheduler
                 {
                     if (!File.Exists(ConfigPath))
                     {
-                        Config = new AppConfig();
+                        _config = new AppConfig();
                         // デフォルト設定にサンプルジョブを1つ追加しておく
-                        Config.Jobs.Add(new JobConfig
+                        _config.Jobs.Add(new JobConfig
                         {
                             Id = "sample-ps",
                             Name = "サンプルPowerShellジョブ",
@@ -63,7 +74,7 @@ namespace MochaScheduler
                         });
 
                         var options = new JsonSerializerOptions { WriteIndented = true };
-                        var json = JsonSerializer.Serialize(Config, options);
+                        var json = JsonSerializer.Serialize(_config, options);
                         File.WriteAllText(ConfigPath, json);
                         LogManager.LogApp("Created default config.json");
 
@@ -80,7 +91,7 @@ namespace MochaScheduler
                     var parsed = JsonSerializer.Deserialize<AppConfig>(content);
                     if (parsed != null)
                     {
-                        Config = parsed;
+                        _config = parsed;
                         LogManager.LogApp("Loaded config.json successfully.");
                     }
                 }
@@ -117,12 +128,13 @@ namespace MochaScheduler
                         _watcher.EnableRaisingEvents = false;
                     }
 
-                    Config = config;
+                    _config = config;
                     var options = new JsonSerializerOptions { WriteIndented = true };
                     var json = JsonSerializer.Serialize(config, options);
                     File.WriteAllText(ConfigPath, json);
 
                     LogManager.LogApp("Config saved successfully.");
+                    ConfigChanged?.Invoke(this, Config);
                 }
                 catch (Exception ex)
                 {

@@ -13,7 +13,6 @@ namespace MochaScheduler
         private DataGridView _dataGridView = null!;
         private Button _btnRun = null!;
         private Button _btnOpenLog = null!;
-        private Button _btnOpenConfig = null!;
         private Button _btnAddJob = null!;
         private Button _btnEditJob = null!;
         private Button _btnDeleteJob = null!;
@@ -56,6 +55,7 @@ namespace MochaScheduler
                 Dock = DockStyle.Fill,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
+                AllowUserToResizeRows = false,
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
@@ -89,14 +89,6 @@ namespace MochaScheduler
                 UseVisualStyleBackColor = true
             };
             _btnOpenLog.Click += BtnOpenLog_Click;
-
-            _btnOpenConfig = new Button
-            {
-                Text = "設定を開く",
-                Size = new System.Drawing.Size(120, 32),
-                UseVisualStyleBackColor = true
-            };
-            _btnOpenConfig.Click += BtnOpenConfig_Click;
 
             _btnAddJob = new Button
             {
@@ -132,7 +124,6 @@ namespace MochaScheduler
 
             buttonPanel.Controls.Add(_btnRun);
             buttonPanel.Controls.Add(_btnOpenLog);
-            buttonPanel.Controls.Add(_btnOpenConfig);
             buttonPanel.Controls.Add(_btnAddJob);
             buttonPanel.Controls.Add(_btnEditJob);
             buttonPanel.Controls.Add(_btnDeleteJob);
@@ -223,24 +214,6 @@ namespace MochaScheduler
                 {
                     MessageBox.Show("このジョブのログファイルはまだ作成されていません。\n（一度も実行されていない可能性があります）", "情報", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
-            }
-        }
-
-        private void BtnOpenConfig_Click(object? sender, EventArgs e)
-        {
-            try
-            {
-                var path = _configManager.GetConfigPath();
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "notepad.exe",
-                    Arguments = $"\"{path}\"",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"設定ファイルを開くことができませんでした:\n{ex.Message}", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

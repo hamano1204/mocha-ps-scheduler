@@ -47,8 +47,8 @@ namespace MochaScheduler
             // ダブルクリック時にジョブ一覧ウィンドウを表示する
             _notifyIcon.DoubleClick += (s, e) => ShowJobListForm();
 
-            // 左クリック時にジョブ一覧ウィンドウを表示する
-            _notifyIcon.MouseClick += (s, e) =>
+            // 左クリック時にジョブ一覧ウィンドウを表示する (MouseClickより信頼性の高いMouseUpを使用)
+            _notifyIcon.MouseUp += (s, e) =>
             {
                 if (e.Button == MouseButtons.Left)
                 {
@@ -124,10 +124,6 @@ namespace MochaScheduler
 
             menu.Items.Add(new ToolStripSeparator());
 
-            // 設定ファイルを開く
-            var openConfigItem = new ToolStripMenuItem("設定を開く (config.json)", null, (s, e) => OpenConfigJson());
-            menu.Items.Add(openConfigItem);
-
             // ログフォルダを開く
             var openLogDirItem = new ToolStripMenuItem("ログフォルダを開く", null, (s, e) => OpenLogDirectory());
             menu.Items.Add(openLogDirItem);
@@ -157,32 +153,12 @@ namespace MochaScheduler
 
         private void ShowJobListForm()
         {
-            if (_jobListForm.Visible)
+            if (_jobListForm.WindowState == FormWindowState.Minimized)
             {
-                _jobListForm.Activate();
+                _jobListForm.WindowState = FormWindowState.Normal;
             }
-            else
-            {
-                _jobListForm.Show();
-            }
-        }
-
-        private void OpenConfigJson()
-        {
-            try
-            {
-                var path = _configManager.GetConfigPath();
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "notepad.exe",
-                    Arguments = $"\"{path}\"",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"設定ファイルを開くことができませんでした:\n{ex.Message}", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            _jobListForm.Show();
+            _jobListForm.Activate();
         }
 
         private void OpenLogDirectory()
@@ -273,6 +249,9 @@ namespace MochaScheduler
         {
             if (disposing)
             {
+                _notificationManager.NotificationRequested -= OnNotificationRequested;
+                _configManager.ConfigChanged -= OnConfigChanged;
+                _jobManager.JobStateChanged -= OnJobStateChanged;
                 _notifyIcon?.Dispose();
                 _jobListForm?.Dispose();
             }

@@ -58,6 +58,13 @@ namespace MochaScheduler.JobRunner
                 }
             };
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                result.Success = false;
+                result.Message = "Job was canceled before starting.";
+                return result;
+            }
+
             try
             {
                 if (!process.Start())
@@ -70,8 +77,27 @@ namespace MochaScheduler.JobRunner
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
 
+                // キャンセル要求時にプロセスツリーごと強制終了するコールバックを登録
+                using var registration = cancellationToken.Register(() =>
+                {
+                    try
+                    {
+                        if (!process.HasExited)
+                        {
+                            process.Kill(entireProcessTree: true);
+                        }
+                    }
+                    catch
+                    {
+                        // 既にプロセスが終了している等の場合は例外を無視
+                    }
+                });
+
                 // CancellationToken によるプロセス終了待機
                 await process.WaitForExitAsync(cancellationToken);
+                
+                // 非同期イベントハンドラがすべて完了するのを保証するため、引数なしの WaitForExit を呼び出す
+                process.WaitForExit();
 
                 result.ExitCode = process.ExitCode;
                 result.Success = process.ExitCode == 0;
@@ -79,19 +105,6 @@ namespace MochaScheduler.JobRunner
             }
             catch (OperationCanceledException)
             {
-                try
-                {
-                    if (!process.HasExited)
-                    {
-                        // プロセスツリーごと終了
-                        process.Kill(entireProcessTree: true);
-                    }
-                }
-                catch
-                {
-                    // すでに終了している場合などの例外を無視
-                }
-                
                 result.Success = false;
                 result.Message = "Job was canceled.";
             }
@@ -112,9 +125,20 @@ namespace MochaScheduler.JobRunner
                 string pfPowerShell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PowerShell");
                 if (Directory.Exists(pfPowerShell))
                 {
-                    var pwshFiles = Directory.GetFiles(pfPowerShell, "pwsh.exe", SearchOption.AllDirectories);
-                    if (pwshFiles.Length > 0)
+                    // バージョン名（例: 7, 7-preview）のディレクトリのみを探索して pwsh.exe を探す（全階層の再帰探索を避けて高速化）
+                    var pwshFilesList = new System.Collections.Generic.List<string>();
+                    foreach (var verDir in Directory.GetDirectories(pfPowerShell))
                     {
+                        string pwshPath = Path.Combine(verDir, "pwsh.exe");
+                        if (File.Exists(pwshPath))
+                        {
+                            pwshFilesList.Add(pwshPath);
+                        }
+                    }
+
+                    if (pwshFilesList.Count > 0)
+                    {
+                        var pwshFiles = pwshFilesList.ToArray();
                         // Sort descending to prefer newer versions, and prioritize non-preview releases
                         Array.Sort(pwshFiles, (a, b) =>
                         {

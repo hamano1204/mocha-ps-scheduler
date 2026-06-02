@@ -133,10 +133,10 @@ namespace MochaScheduler
                             {
                                 jobsToRun.Add(job);
                                 
-                                // 次の実行予定時刻を計算して更新
+                                // 次の実行予定時刻を計算して更新 (現在時刻nowではなく予定時刻nextRunを基準に算出することで時間の累積ドリフトを防ぐ)
                                 if (_schedules.TryGetValue(job.Id, out var schedule))
                                 {
-                                    _nextRunTimes[job.Id] = schedule.GetNextOccurrence(now);
+                                    _nextRunTimes[job.Id] = schedule.GetNextOccurrence(nextRun);
                                     LogManager.LogApp($"Job '{job.Id}' triggered. Next execution: {_nextRunTimes[job.Id]:yyyy-MM-dd HH:mm:ss}");
                                 }
                             }

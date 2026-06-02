@@ -40,7 +40,7 @@
   },
   "projectFileDependencyGroups": {
     "net10.0-windows7.0": [
-      "ncrontab >= 3.4.0"
+      "NCrontab >= 3.4.0"
     ]
   },
   "packageFolders": {
@@ -86,7 +86,7 @@
       "net10.0-windows7.0": {
         "targetAlias": "net10.0-windows",
         "dependencies": {
-          "ncrontab": {
+          "NCrontab": {
             "target": "Package",
             "version": "[3.4.0, )"
           }

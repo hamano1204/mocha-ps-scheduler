@@ -14,6 +14,23 @@ namespace MochaScheduler
 
         [JsonPropertyName("jobs")]
         public List<JobConfig> Jobs { get; set; } = new();
+
+        public AppConfig Clone()
+        {
+            var clone = new AppConfig
+            {
+                Startup = this.Startup,
+                Notification = this.Notification?.Clone() ?? new NotificationConfig()
+            };
+            if (this.Jobs != null)
+            {
+                foreach (var job in this.Jobs)
+                {
+                    clone.Jobs.Add(job.Clone());
+                }
+            }
+            return clone;
+        }
     }
 
     public class NotificationConfig
@@ -23,6 +40,15 @@ namespace MochaScheduler
 
         [JsonPropertyName("onFailure")]
         public bool OnFailure { get; set; } = true;
+
+        public NotificationConfig Clone()
+        {
+            return new NotificationConfig
+            {
+                OnSuccess = this.OnSuccess,
+                OnFailure = this.OnFailure
+            };
+        }
     }
 
     public class JobConfig
@@ -56,6 +82,23 @@ namespace MochaScheduler
 
         [JsonPropertyName("executablePath")]
         public string ExecutablePath { get; set; } = string.Empty;
+
+        public JobConfig Clone()
+        {
+            return new JobConfig
+            {
+                Id = this.Id,
+                Name = this.Name,
+                Type = this.Type,
+                ScriptPath = this.ScriptPath,
+                Arguments = this.Arguments,
+                Schedule = this.Schedule,
+                TimeoutSeconds = this.TimeoutSeconds,
+                RetryCount = this.RetryCount,
+                RetryDelaySeconds = this.RetryDelaySeconds,
+                ExecutablePath = this.ExecutablePath
+            };
+        }
     }
 
     public class JobResult
