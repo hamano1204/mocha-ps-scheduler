@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("mocha-ps-scheduler")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+57d8a3b08507d7cc7b5e2f9dd51530ddd453eb8b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a328cf542205c575ba1e10160403f6e7d58963d8")]
 [assembly: System.Reflection.AssemblyProductAttribute("mocha-ps-scheduler")]
 [assembly: System.Reflection.AssemblyTitleAttribute("mocha-ps-scheduler")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -2123,3 +2123,10 @@
 [2026-06-01 01:56:55] [WARNING] Job 'sample-ps' (サンプルPowerShellジョブ) is already running. Skipped.
 [2026-06-01 01:57:00] [INFO] Job 'sample-ps' triggered. Next execution: 2026-06-01 01:57:05
 [2026-06-01 01:57:00] [WARNING] Job 'sample-ps' (サンプルPowerShellジョブ) is already running. Skipped.
+[2026-06-03 00:03:09] [INFO] Loaded config.json successfully.
+[2026-06-03 00:03:09] [INFO] Scheduled job 'sample-ps' - Next execution: 2026-06-03 00:03:10
+[2026-06-03 00:03:09] [INFO] Scheduler engine started successfully.
+[2026-06-03 00:03:10] [INFO] Job 'sample-ps' triggered. Next execution: 2026-06-03 00:03:15
+[2026-06-03 00:03:10] [INFO] Starting job 'sample-ps' (サンプルPowerShellジョブ) [Manual=False]
+[2026-06-03 00:03:15] [INFO] Job 'sample-ps' triggered. Next execution: 2026-06-03 00:03:20
+[2026-06-03 00:03:15] [WARNING] Job 'sample-ps' (サンプルPowerShellジョブ) is already running. Skipped.
