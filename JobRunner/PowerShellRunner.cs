@@ -16,20 +16,9 @@ namespace MochaScheduler.JobRunner
         {
             var result = new JobResult();
             
-            // config でパスが明示されていればそれを使用。なければ pwsh.exe を動的探索して使用
-            string shell = "powershell.exe";
-            if (!string.IsNullOrEmpty(config.ExecutablePath))
-            {
-                shell = config.ExecutablePath;
-            }
-            else
-            {
-                shell = GetLatestPwshPath();
-            }
-
+            string shell = !string.IsNullOrEmpty(config.ExecutablePath) ? config.ExecutablePath : GetLatestPwshPath();
             string scriptPath = config.ScriptPath;
-            // 引数の組み立て
-            string args = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"{scriptPath}\" {config.Arguments}".Trim();
+            string args = $"-NoProfile -NonInteractive -InputFormat None -ExecutionPolicy Bypass -File \"{scriptPath}\" {config.Arguments}".Trim();
 
             using var process = new Process();
             process.StartInfo = new ProcessStartInfo
@@ -38,25 +27,11 @@ namespace MochaScheduler.JobRunner
                 Arguments = args,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
+                RedirectStandardInput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-
-            process.OutputDataReceived += (sender, e) =>
-            {
-                if (e.Data != null)
-                {
-                    onOutputReceived(e.Data);
-                }
-            };
-
-            process.ErrorDataReceived += (sender, e) =>
-            {
-                if (e.Data != null)
-                {
-                    onErrorReceived(e.Data);
-                }
-            };
+            process.EnableRaisingEvents = false;
 
             if (cancellationToken.IsCancellationRequested)
             {
@@ -74,8 +49,8 @@ namespace MochaScheduler.JobRunner
                     return result;
                 }
 
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
+                // 標準入力を即座に閉じて、入力待ちでのハングを確実に防ぐ
+                process.StandardInput.Close();
 
                 // キャンセル要求時にプロセスツリーごと強制終了するコールバックを登録
                 using var registration = cancellationToken.Register(() =>
@@ -93,20 +68,36 @@ namespace MochaScheduler.JobRunner
                     }
                 });
 
-                // CancellationToken によるプロセス終了待機
-                await process.WaitForExitAsync(cancellationToken);
-                
-                // 非同期イベントハンドラがすべて完了するのを保証するため、引数なしの WaitForExit を呼び出す
-                process.WaitForExit();
+                // 標準出力/標準エラーの非同期読み取りタスクを開始
+                var outputTask = ReadStreamAsync(process.StandardOutput, onOutputReceived, "stdout", cancellationToken);
+                var errorTask = ReadStreamAsync(process.StandardError, onErrorReceived, "stderr", cancellationToken);
 
-                result.ExitCode = process.ExitCode;
-                result.Success = process.ExitCode == 0;
-                result.Message = $"Process exited with code {process.ExitCode}";
-            }
-            catch (OperationCanceledException)
-            {
-                result.Success = false;
-                result.Message = "Job was canceled.";
+                // プロセスの終了をポーリングで待機
+                await WaitForProcessExitAsync(process, cancellationToken).ConfigureAwait(false);
+
+                // 標準出力・標準エラーのストリームを明示的に Dispose して、非同期I/Oブロックを強制解除
+                try { process.StandardOutput.Dispose(); } catch { }
+                try { process.StandardError.Dispose(); } catch { }
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    await WaitForCancellationCleanupAsync(process).ConfigureAwait(false);
+                    result.Success = false;
+                    result.Message = "Job was canceled.";
+                }
+                else if (process.HasExited)
+                {
+                    await WaitForOutputTasksAsync(outputTask, errorTask, config.Id).ConfigureAwait(false);
+
+                    result.ExitCode = process.ExitCode;
+                    result.Success = process.ExitCode == 0;
+                    result.Message = $"Process exited with code {process.ExitCode}";
+                }
+                else
+                {
+                    result.Success = false;
+                    result.Message = "Process did not exit within expected time.";
+                }
             }
             catch (Exception ex)
             {
@@ -116,6 +107,79 @@ namespace MochaScheduler.JobRunner
             }
 
             return result;
+        }
+
+        private static Task ReadStreamAsync(
+            StreamReader reader, 
+            Action<string> onLineReceived, 
+            string streamName, 
+            CancellationToken cancellationToken)
+        {
+            return Task.Run(async () =>
+            {
+                try
+                {
+                    while (true)
+                    {
+                        string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                        if (line == null) break;
+                        onLineReceived(line);
+                    }
+                }
+                catch (ObjectDisposedException) { }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    LogManager.LogApp($"Error reading {streamName}: {ex.Message}", "ERROR");
+                }
+            });
+        }
+
+        private static async Task WaitForProcessExitAsync(Process process, CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                try { process.Refresh(); } catch { }
+                if (process.HasExited) break;
+
+                try
+                {
+                    await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+
+        private static async Task WaitForCancellationCleanupAsync(Process process)
+        {
+            int waitTries = 0;
+            while (waitTries < 40)
+            {
+                try { process.Refresh(); } catch { }
+                if (process.HasExited) break;
+                await Task.Delay(50).ConfigureAwait(false);
+                waitTries++;
+            }
+        }
+
+        private static async Task WaitForOutputTasksAsync(Task outputTask, Task errorTask, string jobId)
+        {
+            try
+            {
+                var delayTask = Task.Delay(200);
+                var completedTask = await Task.WhenAny(Task.WhenAll(outputTask, errorTask), delayTask).ConfigureAwait(false);
+                if (completedTask == delayTask)
+                {
+                    LogManager.LogApp($"Reading output for job '{jobId}' timed out after process exit (possible .NET stream hang).", "WARNING");
+                }
+            }
+            catch
+            {
+                // タスク完了時の例外は無視
+            }
         }
 
         private static string GetLatestPwshPath()

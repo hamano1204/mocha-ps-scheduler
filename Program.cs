@@ -29,6 +29,9 @@ namespace MochaScheduler
             // Windows Forms の高DPIなどの設定初期化
             ApplicationConfiguration.Initialize();
 
+            // 同期コンテキストを明示的にインストールして、Application.Run 起動前でも UI スレッドへの Post が正しく行われるようにする
+            SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
+
             // 未処理例外のグローバルハンドラを設定してログに出力できるようにする
             Application.ThreadException += (sender, e) =>
             {

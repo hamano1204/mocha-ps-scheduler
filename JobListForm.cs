@@ -385,6 +385,11 @@ namespace MochaScheduler
 
         private void SafeInvoke(Action action)
         {
+            if (this.IsDisposed || !this.IsHandleCreated)
+            {
+                return;
+            }
+
             if (this.InvokeRequired)
             {
                 this.BeginInvoke(action);

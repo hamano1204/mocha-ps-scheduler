@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace MochaScheduler
@@ -14,6 +15,7 @@ namespace MochaScheduler
         private readonly SchedulerEngine _schedulerEngine;
         private readonly NotificationManager _notificationManager;
         private readonly JobListForm _jobListForm;
+        private readonly SynchronizationContext? _syncContext;
 
         public SystemTrayContext(
             ConfigManager configManager,
@@ -21,6 +23,7 @@ namespace MochaScheduler
             SchedulerEngine schedulerEngine,
             NotificationManager notificationManager)
         {
+            _syncContext = SynchronizationContext.Current;
             _configManager = configManager;
             _jobManager = jobManager;
             _schedulerEngine = schedulerEngine;
@@ -203,7 +206,10 @@ namespace MochaScheduler
 
         private void OnNotificationRequested(object? sender, NotificationManager.NotificationEventArgs e)
         {
-            _notifyIcon.ShowBalloonTip(3000, e.Title, e.Message, e.Icon);
+            SafeInvoke(() => 
+            {
+                _notifyIcon.ShowBalloonTip(3000, e.Title, e.Message, e.Icon);
+            });
         }
 
         private void OnConfigChanged(object? sender, AppConfig e)
@@ -218,14 +224,30 @@ namespace MochaScheduler
 
         private void SafeInvoke(Action action)
         {
-            if (_notifyIcon.ContextMenuStrip != null && _notifyIcon.ContextMenuStrip.InvokeRequired)
+            var syncContext = _syncContext ?? SynchronizationContext.Current;
+            if (syncContext != null)
             {
-                _notifyIcon.ContextMenuStrip.BeginInvoke(action);
+                syncContext.Post(_ => action(), null);
+                return;
             }
-            else
+
+            if (_jobListForm != null && !_jobListForm.IsDisposed)
             {
-                action();
+                try
+                {
+                    if (_jobListForm.InvokeRequired)
+                    {
+                        _jobListForm.BeginInvoke(action);
+                        return;
+                    }
+                }
+                catch
+                {
+                    // ハンドル未作成などの例外対策
+                }
             }
+
+            action();
         }
 
         private void ExitApplication()
