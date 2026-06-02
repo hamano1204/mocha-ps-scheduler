@@ -1,0 +1,17 @@
+C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\mocha-ps-scheduler.exe
+C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\mocha-ps-scheduler.deps.json
+C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\mocha-ps-scheduler.runtimeconfig.json
+C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\mocha-ps-scheduler.dll
+C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\mocha-ps-scheduler.pdb
+C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\NCrontab.dll
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\mocha-ps-scheduler.csproj.AssemblyReference.cache
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\mocha-ps-scheduler.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\mocha-ps-scheduler.AssemblyInfoInputs.cache
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\mocha-ps-scheduler.AssemblyInfo.cs
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\mocha-ps-scheduler.csproj.CoreCompileInputs.cache
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\mocha-ps.EC2CC946.Up2Date
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\mocha-ps-scheduler.dll
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\refint\mocha-ps-scheduler.dll
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\mocha-ps-scheduler.pdb
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\mocha-ps-scheduler.genruntimeconfig.cache
+C:\Users\haman_9\dev\mocha-ps-scheduler\obj\Debug\net10.0-windows\ref\mocha-ps-scheduler.dll

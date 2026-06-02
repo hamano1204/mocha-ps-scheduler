@@ -1,0 +1,41 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "mocha-ps-scheduler/1.0.0": {
+        "dependencies": {
+          "NCrontab": "3.4.0"
+        },
+        "runtime": {
+          "mocha-ps-scheduler.dll": {}
+        }
+      },
+      "NCrontab/3.4.0": {
+        "runtime": {
+          "lib/netstandard2.0/NCrontab.dll": {
+            "assemblyVersion": "3.4.0.0",
+            "fileVersion": "3.4.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "mocha-ps-scheduler/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "NCrontab/3.4.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-t3okCB6odi64mZvhetBPSR/ejKib3uSnmyCqj8M0mf2S3yFxbDFZLjxfWqcwvmS3zzgXR6LAIi0XlBU4oqxTlg==",
+      "path": "ncrontab/3.4.0",
+      "hashPath": "ncrontab.3.4.0.nupkg.sha512"
+    }
+  }
+}

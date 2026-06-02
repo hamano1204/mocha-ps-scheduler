@@ -1,0 +1,21 @@
+{
+  "startup": true,
+  "notification": {
+    "onSuccess": false,
+    "onFailure": true
+  },
+  "jobs": [
+    {
+      "id": "sample-ps",
+      "name": "\u30B5\u30F3\u30D7\u30EBPowerShell\u30B8\u30E7\u30D6",
+      "type": "PowerShell",
+      "scriptPath": "C:\\Users\\haman_9\\dev\\mocha-ps-scheduler\\bin\\Debug\\net10.0-windows\\sample.ps1",
+      "arguments": "",
+      "schedule": "*/5 * * * * *",
+      "timeoutSeconds": 60,
+      "retryCount": 1,
+      "retryDelaySeconds": 10,
+      "executablePath": ""
+    }
+  ]
+}

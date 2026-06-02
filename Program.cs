@@ -1,0 +1,83 @@
+using System;
+using System.Threading;
+using System.Windows.Forms;
+
+namespace MochaScheduler
+{
+    static class Program
+    {
+        private static Mutex? _mutex;
+
+        [STAThread]
+        static void Main()
+        {
+            // 二重起動防止用 Mutex (マシン全体で一意)
+            const string mutexName = "Global\\MochaPSScheduler_Mutex_2026";
+            _mutex = new Mutex(true, mutexName, out bool isNewInstance);
+
+            if (!isNewInstance)
+            {
+                MessageBox.Show(
+                    "Mocha PS Scheduler はすでに起動しています。\nシステムトレイのアイコンを確認してください。",
+                    "二重起動防止",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
+            }
+
+            // Windows Forms の高DPIなどの設定初期化
+            ApplicationConfiguration.Initialize();
+
+            try
+            {
+                // コア管理モジュールの初期化
+                using var configManager = new ConfigManager();
+                var notificationManager = new NotificationManager(configManager);
+                var jobManager = new JobManager(notificationManager);
+                
+                using var schedulerEngine = new SchedulerEngine(configManager, jobManager);
+
+                // 定期実行スケジューラの開始
+                schedulerEngine.Start();
+
+                // トレイ常駐UIの開始
+                using var trayContext = new SystemTrayContext(
+                    configManager,
+                    jobManager,
+                    schedulerEngine,
+                    notificationManager
+                );
+
+                // メッセージループの開始
+                Application.Run(trayContext);
+            }
+            catch (Exception ex)
+            {
+                LogManager.LogApp($"Fatal error in application entry point: {ex}", "FATAL");
+                MessageBox.Show(
+                    $"アプリケーションで重大なエラーが発生しました:\n{ex.Message}\n\n詳細はlogs\\app.logを確認してください。",
+                    "致命的なエラー",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+            finally
+            {
+                // Mutexの解放
+                if (_mutex != null)
+                {
+                    try
+                    {
+                        _mutex.ReleaseMutex();
+                    }
+                    catch
+                    {
+                        // 放出失敗は無視
+                    }
+                    _mutex.Dispose();
+                }
+            }
+        }
+    }
+}

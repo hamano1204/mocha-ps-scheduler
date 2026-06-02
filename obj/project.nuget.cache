@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "j4HkpeHzfA8=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\haman_9\\dev\\mocha-ps-scheduler\\mocha-ps-scheduler.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\haman_9\\.nuget\\packages\\ncrontab\\3.4.0\\ncrontab.3.4.0.nupkg.sha512"
+  ],
+  "logs": []
+}
