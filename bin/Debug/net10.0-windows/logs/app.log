@@ -2130,3 +2130,9 @@
 [2026-06-03 00:03:10] [INFO] Starting job 'sample-ps' (サンプルPowerShellジョブ) [Manual=False]
 [2026-06-03 00:03:15] [INFO] Job 'sample-ps' triggered. Next execution: 2026-06-03 00:03:20
 [2026-06-03 00:03:15] [WARNING] Job 'sample-ps' (サンプルPowerShellジョブ) is already running. Skipped.
+[2026-06-03 00:03:20] [INFO] Job 'sample-ps' triggered. Next execution: 2026-06-03 00:03:25
+[2026-06-03 00:03:20] [WARNING] Job 'sample-ps' (サンプルPowerShellジョブ) is already running. Skipped.
+[2026-06-03 00:03:25] [INFO] Job 'sample-ps' triggered. Next execution: 2026-06-03 00:03:30
+[2026-06-03 00:03:25] [WARNING] Job 'sample-ps' (サンプルPowerShellジョブ) is already running. Skipped.
+[2026-06-03 00:03:30] [INFO] Job 'sample-ps' triggered. Next execution: 2026-06-03 00:03:35
+[2026-06-03 00:03:30] [WARNING] Job 'sample-ps' (サンプルPowerShellジョブ) is already running. Skipped.
