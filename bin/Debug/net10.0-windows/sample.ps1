@@ -1,1 +1,0 @@
-Write-Output "Hello, Mocha Scheduler! Current time is $(Get-Date)"
