@@ -20,6 +20,15 @@ namespace MochaScheduler
 
         public bool IsJobRunning(string jobId) => _runningJobs.ContainsKey(jobId);
 
+        public bool IsJobCancelling(string jobId)
+        {
+            if (_runningJobs.TryGetValue(jobId, out var cts))
+            {
+                return cts.IsCancellationRequested;
+            }
+            return false;
+        }
+
         public int RunningJobsCount => _runningJobs.Count;
 
         public void CancelJob(string jobId)
@@ -28,6 +37,8 @@ namespace MochaScheduler
             {
                 LogManager.LogApp($"Requesting cancel for job '{jobId}'...");
                 cts.Cancel();
+                // 停止要求をした際に、画面上のステータス表示が即時「停止処理中」になるように通知イベントを発火する
+                JobStateChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 

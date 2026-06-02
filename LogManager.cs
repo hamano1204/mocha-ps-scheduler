@@ -45,6 +45,13 @@ namespace MochaScheduler
             {
                 try
                 {
+                    // 実行中にログフォルダが削除された場合への対策として、親フォルダの存在を確認して再作成
+                    string? dir = Path.GetDirectoryName(filePath);
+                    if (dir != null && !Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
                     if (File.Exists(filePath))
                     {
                         var info = new FileInfo(filePath);
@@ -54,7 +61,8 @@ namespace MochaScheduler
                         }
                     }
 
-                    using var writer = new StreamWriter(filePath, append: true);
+                    // 文字化け防止のため UTF-8 で書き出す
+                    using var writer = new StreamWriter(filePath, append: true, System.Text.Encoding.UTF8);
                     writer.WriteLine(content);
                 }
                 catch

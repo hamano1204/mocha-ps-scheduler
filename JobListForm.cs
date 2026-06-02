@@ -12,6 +12,7 @@ namespace MochaScheduler
         private readonly JobManager _jobManager;
         private DataGridView _dataGridView = null!;
         private Button _btnRun = null!;
+        private Button _btnStopJob = null!;
         private Button _btnOpenLog = null!;
         private Button _btnAddJob = null!;
         private Button _btnEditJob = null!;
@@ -82,6 +83,14 @@ namespace MochaScheduler
             };
             _btnRun.Click += BtnRun_Click;
 
+            _btnStopJob = new Button
+            {
+                Text = "実行停止",
+                Size = new System.Drawing.Size(120, 32),
+                UseVisualStyleBackColor = true
+            };
+            _btnStopJob.Click += BtnStopJob_Click;
+
             _btnOpenLog = new Button
             {
                 Text = "ログを開く",
@@ -123,6 +132,7 @@ namespace MochaScheduler
             _btnClose.Click += (s, e) => this.Hide();
 
             buttonPanel.Controls.Add(_btnRun);
+            buttonPanel.Controls.Add(_btnStopJob);
             buttonPanel.Controls.Add(_btnOpenLog);
             buttonPanel.Controls.Add(_btnAddJob);
             buttonPanel.Controls.Add(_btnEditJob);
@@ -146,13 +156,25 @@ namespace MochaScheduler
                 if (string.IsNullOrEmpty(job.Id)) continue;
 
                 var isRunning = _jobManager.IsJobRunning(job.Id);
+                var isCancelling = _jobManager.IsJobCancelling(job.Id);
+                
+                string statusText = "待機中";
+                if (isCancelling)
+                {
+                    statusText = "停止処理中";
+                }
+                else if (isRunning)
+                {
+                    statusText = "実行中";
+                }
+
                 rows.Add(new JobDisplayRow
                 {
                     Id = job.Id,
                     Name = string.IsNullOrEmpty(job.Name) ? job.Id : job.Name,
                     Schedule = job.Schedule,
                     ScriptPath = job.ScriptPath,
-                    Status = isRunning ? "実行中" : "待機中"
+                    Status = statusText
                 });
             }
 
@@ -185,6 +207,35 @@ namespace MochaScheduler
                 }
 
                 _ = _jobManager.TriggerJobAsync(selectedJob, isManual: true);
+            }
+        }
+
+        private void BtnStopJob_Click(object? sender, EventArgs e)
+        {
+            var selectedJob = GetSelectedJobConfig();
+            if (selectedJob != null)
+            {
+                if (!_jobManager.IsJobRunning(selectedJob.Id))
+                {
+                    MessageBox.Show("選択したジョブは実行中ではありません。", "情報", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                var confirm = MessageBox.Show(
+                    $"実行中のジョブ '{selectedJob.Name}' (ID: {selectedJob.Id}) を停止しますか？",
+                    "停止の確認",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                );
+
+                if (confirm == DialogResult.Yes)
+                {
+                    _jobManager.CancelJob(selectedJob.Id);
+                }
+            }
+            else
+            {
+                MessageBox.Show("停止するジョブを選択してください。", "情報", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 

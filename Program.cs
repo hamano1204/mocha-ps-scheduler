@@ -29,6 +29,23 @@ namespace MochaScheduler
             // Windows Forms の高DPIなどの設定初期化
             ApplicationConfiguration.Initialize();
 
+            // 未処理例外のグローバルハンドラを設定してログに出力できるようにする
+            Application.ThreadException += (sender, e) =>
+            {
+                LogManager.LogApp($"Unhandled UI thread exception: {e.Exception}", "FATAL");
+                MessageBox.Show(
+                    $"アプリケーションのエラーが発生しました:\n{e.Exception.Message}\n\n詳細はlogs\\app.logを確認してください。",
+                    "エラー",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+                LogManager.LogApp($"Unhandled AppDomain exception: {e.ExceptionObject}", "FATAL");
+            };
+
             try
             {
                 // コア管理モジュールの初期化
