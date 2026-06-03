@@ -1,3 +1,4 @@
+C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\app.ico
 C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\mocha-ps-scheduler.exe
 C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\mocha-ps-scheduler.deps.json
 C:\Users\haman_9\dev\mocha-ps-scheduler\bin\Debug\net10.0-windows\mocha-ps-scheduler.runtimeconfig.json

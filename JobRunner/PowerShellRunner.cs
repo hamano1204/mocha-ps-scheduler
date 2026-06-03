@@ -4,225 +4,181 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace MochaScheduler.JobRunner
+namespace MochaScheduler.JobRunner;
+
+public class PowerShellRunner : IJobRunner
 {
-    public class PowerShellRunner
+    public async Task<JobResult> RunAsync(
+        JobConfig config, 
+        Action<string> onOutputReceived, 
+        Action<string> onErrorReceived, 
+        CancellationToken cancellationToken)
     {
-        public async Task<JobResult> RunAsync(
-            JobConfig config, 
-            Action<string> onOutputReceived, 
-            Action<string> onErrorReceived, 
-            CancellationToken cancellationToken)
+        var result = new JobResult();
+        
+        string shell = !string.IsNullOrEmpty(config.ExecutablePath) ? config.ExecutablePath : "powershell.exe";
+        string scriptPath = config.ScriptPath;
+        string args = $"-NoProfile -NonInteractive -InputFormat None -ExecutionPolicy Bypass -File \"{scriptPath}\" {config.Arguments}".Trim();
+
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
         {
-            var result = new JobResult();
-            
-            string shell = !string.IsNullOrEmpty(config.ExecutablePath) ? config.ExecutablePath : GetLatestPwshPath();
-            string scriptPath = config.ScriptPath;
-            string args = $"-NoProfile -NonInteractive -InputFormat None -ExecutionPolicy Bypass -File \"{scriptPath}\" {config.Arguments}".Trim();
+            FileName = shell,
+            Arguments = args,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            RedirectStandardInput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        process.EnableRaisingEvents = false;
 
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = shell,
-                Arguments = args,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                RedirectStandardInput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            process.EnableRaisingEvents = false;
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                result.Success = false;
-                result.Message = "Job was canceled before starting.";
-                return result;
-            }
-
-            try
-            {
-                if (!process.Start())
-                {
-                    result.Success = false;
-                    result.Message = "Failed to start process.";
-                    return result;
-                }
-
-                // 標準入力を即座に閉じて、入力待ちでのハングを確実に防ぐ
-                process.StandardInput.Close();
-
-                // キャンセル要求時にプロセスツリーごと強制終了するコールバックを登録
-                using var registration = cancellationToken.Register(() =>
-                {
-                    try
-                    {
-                        if (!process.HasExited)
-                        {
-                            process.Kill(entireProcessTree: true);
-                        }
-                    }
-                    catch
-                    {
-                        // 既にプロセスが終了している等の場合は例外を無視
-                    }
-                });
-
-                // 標準出力/標準エラーの非同期読み取りタスクを開始
-                var outputTask = ReadStreamAsync(process.StandardOutput, onOutputReceived, "stdout", cancellationToken);
-                var errorTask = ReadStreamAsync(process.StandardError, onErrorReceived, "stderr", cancellationToken);
-
-                // プロセスの終了をポーリングで待機
-                await WaitForProcessExitAsync(process, cancellationToken).ConfigureAwait(false);
-
-                // 標準出力・標準エラーのストリームを明示的に Dispose して、非同期I/Oブロックを強制解除
-                try { process.StandardOutput.Dispose(); } catch { }
-                try { process.StandardError.Dispose(); } catch { }
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    await WaitForCancellationCleanupAsync(process).ConfigureAwait(false);
-                    result.Success = false;
-                    result.Message = "Job was canceled.";
-                }
-                else if (process.HasExited)
-                {
-                    await WaitForOutputTasksAsync(outputTask, errorTask, config.Id).ConfigureAwait(false);
-
-                    result.ExitCode = process.ExitCode;
-                    result.Success = process.ExitCode == 0;
-                    result.Message = $"Process exited with code {process.ExitCode}";
-                }
-                else
-                {
-                    result.Success = false;
-                    result.Message = "Process did not exit within expected time.";
-                }
-            }
-            catch (Exception ex)
-            {
-                result.Success = false;
-                result.Exception = ex;
-                result.Message = $"Error starting process: {ex.Message}";
-            }
-
+        if (cancellationToken.IsCancellationRequested)
+        {
+            result.Success = false;
+            result.Message = "Job was canceled before starting.";
             return result;
         }
 
-        private static Task ReadStreamAsync(
-            StreamReader reader, 
-            Action<string> onLineReceived, 
-            string streamName, 
-            CancellationToken cancellationToken)
+        try
         {
-            return Task.Run(async () =>
+            if (!process.Start())
+            {
+                result.Success = false;
+                result.Message = "Failed to start process.";
+                return result;
+            }
+
+            // 標準入力を即座に閉じて、入力待ちでのハングを確実に防ぐ
+            process.StandardInput.Close();
+
+            // キャンセル要求時にプロセスツリーごと強制終了するコールバックを登録
+            using var registration = cancellationToken.Register(() =>
             {
                 try
                 {
-                    while (true)
+                    if (!process.HasExited)
                     {
-                        string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-                        if (line == null) break;
-                        onLineReceived(line);
+                        process.Kill(entireProcessTree: true);
                     }
                 }
-                catch (ObjectDisposedException) { }
-                catch (OperationCanceledException) { }
-                catch (Exception ex)
+                catch
                 {
-                    LogManager.LogApp($"Error reading {streamName}: {ex.Message}", "ERROR");
+                    // 既にプロセスが終了している等の場合は例外を無視
                 }
             });
-        }
 
-        private static async Task WaitForProcessExitAsync(Process process, CancellationToken cancellationToken)
-        {
-            while (true)
+            // 標準出力/標準エラーの非同期読み取りタスクを開始
+            var outputTask = ReadStreamAsync(process.StandardOutput, onOutputReceived, "stdout", cancellationToken);
+            var errorTask = ReadStreamAsync(process.StandardError, onErrorReceived, "stderr", cancellationToken);
+
+            // プロセスの終了をポーリングで待機
+            await WaitForProcessExitAsync(process, cancellationToken).ConfigureAwait(false);
+
+            // 標準出力・標準エラーのストリームを明示的に Dispose して、非同期I/Oブロックを強制解除
+            try { process.StandardOutput.Dispose(); } catch { }
+            try { process.StandardError.Dispose(); } catch { }
+
+            if (cancellationToken.IsCancellationRequested)
             {
-                try { process.Refresh(); } catch { }
-                if (process.HasExited) break;
+                await WaitForCancellationCleanupAsync(process).ConfigureAwait(false);
+                result.Success = false;
+                result.Message = "Job was canceled.";
+            }
+            else if (process.HasExited)
+            {
+                await WaitForOutputTasksAsync(outputTask, errorTask, config.Id).ConfigureAwait(false);
 
-                try
-                {
-                    await Task.Delay(50, cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
+                result.ExitCode = process.ExitCode;
+                result.Success = process.ExitCode == 0;
+                result.Message = $"Process exited with code {process.ExitCode}";
+            }
+            else
+            {
+                result.Success = false;
+                result.Message = "Process did not exit within expected time.";
             }
         }
-
-        private static async Task WaitForCancellationCleanupAsync(Process process)
+        catch (Exception ex)
         {
-            int waitTries = 0;
-            while (waitTries < 40)
-            {
-                try { process.Refresh(); } catch { }
-                if (process.HasExited) break;
-                await Task.Delay(50).ConfigureAwait(false);
-                waitTries++;
-            }
+            result.Success = false;
+            result.Exception = ex;
+            result.Message = $"Error starting process: {ex.Message}";
         }
 
-        private static async Task WaitForOutputTasksAsync(Task outputTask, Task errorTask, string jobId)
+        return result;
+    }
+
+    private static Task ReadStreamAsync(
+        StreamReader reader, 
+        Action<string> onLineReceived, 
+        string streamName, 
+        CancellationToken cancellationToken)
+    {
+        return Task.Run(async () =>
         {
             try
             {
-                var delayTask = Task.Delay(200);
-                var completedTask = await Task.WhenAny(Task.WhenAll(outputTask, errorTask), delayTask).ConfigureAwait(false);
-                if (completedTask == delayTask)
+                while (true)
                 {
-                    LogManager.LogApp($"Reading output for job '{jobId}' timed out after process exit (possible .NET stream hang).", "WARNING");
+                    string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                    if (line == null) break;
+                    onLineReceived(line);
                 }
             }
-            catch
-            {
-                // タスク完了時の例外は無視
-            }
-        }
-
-        private static string GetLatestPwshPath()
-        {
-            try
-            {
-                string pfPowerShell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PowerShell");
-                if (Directory.Exists(pfPowerShell))
-                {
-                    // バージョン名（例: 7, 7-preview）のディレクトリのみを探索して pwsh.exe を探す（全階層の再帰探索を避けて高速化）
-                    var pwshFilesList = new System.Collections.Generic.List<string>();
-                    foreach (var verDir in Directory.GetDirectories(pfPowerShell))
-                    {
-                        string pwshPath = Path.Combine(verDir, "pwsh.exe");
-                        if (File.Exists(pwshPath))
-                        {
-                            pwshFilesList.Add(pwshPath);
-                        }
-                    }
-
-                    if (pwshFilesList.Count > 0)
-                    {
-                        var pwshFiles = pwshFilesList.ToArray();
-                        // Sort descending to prefer newer versions, and prioritize non-preview releases
-                        Array.Sort(pwshFiles, (a, b) =>
-                        {
-                            bool aPreview = a.Contains("preview", StringComparison.OrdinalIgnoreCase);
-                            bool bPreview = b.Contains("preview", StringComparison.OrdinalIgnoreCase);
-                            if (aPreview != bPreview)
-                            {
-                                return aPreview.CompareTo(bPreview); // false (non-preview) comes first
-                            }
-                            return string.Compare(b, a, StringComparison.OrdinalIgnoreCase);
-                        });
-                        return pwshFiles[0];
-                    }
-                }
-            }
+            catch (ObjectDisposedException) { }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                LogManager.LogApp($"Failed dynamically locating pwsh.exe: {ex.Message}", "WARNING");
+                LogManager.LogApp($"Error reading {streamName}: {ex.Message}", "ERROR");
             }
-            return "powershell.exe"; // Fallback to System PowerShell
+        });
+    }
+
+    private static async Task WaitForProcessExitAsync(Process process, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            try { process.Refresh(); } catch { }
+            if (process.HasExited) break;
+
+            try
+            {
+                await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+    }
+
+    private static async Task WaitForCancellationCleanupAsync(Process process)
+    {
+        int waitTries = 0;
+        while (waitTries < 40)
+        {
+            try { process.Refresh(); } catch { }
+            if (process.HasExited) break;
+            await Task.Delay(50).ConfigureAwait(false);
+            waitTries++;
+        }
+    }
+
+    private static async Task WaitForOutputTasksAsync(Task outputTask, Task errorTask, string jobId)
+    {
+        try
+        {
+            var delayTask = Task.Delay(200);
+            var completedTask = await Task.WhenAny(Task.WhenAll(outputTask, errorTask), delayTask).ConfigureAwait(false);
+            if (completedTask == delayTask)
+            {
+                LogManager.LogApp($"Reading output for job '{jobId}' timed out after process exit (possible .NET stream hang).", "WARNING");
+            }
+        }
+        catch
+        {
+            // タスク完了時の例外は無視
         }
     }
 }

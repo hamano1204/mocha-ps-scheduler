@@ -1,60 +1,45 @@
 using System;
 using System.Windows.Forms;
 
-namespace MochaScheduler
+namespace MochaScheduler;
+
+public class NotificationManager(ConfigManager configManager)
 {
-    public class NotificationManager
+    public class NotificationEventArgs(string title, string message, ToolTipIcon icon) : EventArgs
     {
-        public class NotificationEventArgs : EventArgs
+        public string Title { get; } = title;
+        public string Message { get; } = message;
+        public ToolTipIcon Icon { get; } = icon;
+    }
+
+    public event EventHandler<NotificationEventArgs>? NotificationRequested;
+
+    public void ShowJobSuccess(string jobName, bool isManual)
+    {
+        if (isManual || configManager.Config.Notification.OnSuccess)
         {
-            public string Title { get; }
-            public string Message { get; }
-            public ToolTipIcon Icon { get; }
-
-            public NotificationEventArgs(string title, string message, ToolTipIcon icon)
-            {
-                Title = title;
-                Message = message;
-                Icon = icon;
-            }
+            NotificationRequested?.Invoke(this, new NotificationEventArgs(
+                "ジョブ実行成功",
+                $"ジョブ '{jobName}' が正常に完了しました。",
+                ToolTipIcon.Info
+            ));
         }
+    }
 
-        public event EventHandler<NotificationEventArgs>? NotificationRequested;
-        
-        private readonly ConfigManager _configManager;
-
-        public NotificationManager(ConfigManager configManager)
+    public void ShowJobFailure(string jobName, string error, bool isManual)
+    {
+        if (isManual || configManager.Config.Notification.OnFailure)
         {
-            _configManager = configManager;
+            NotificationRequested?.Invoke(this, new NotificationEventArgs(
+                "ジョブ実行失敗",
+                $"ジョブ '{jobName}' の実行に失敗しました。\n{error}",
+                ToolTipIcon.Error
+            ));
         }
+    }
 
-        public void ShowJobSuccess(string jobName, bool isManual)
-        {
-            if (isManual || _configManager.Config.Notification.OnSuccess)
-            {
-                NotificationRequested?.Invoke(this, new NotificationEventArgs(
-                    "ジョブ実行成功",
-                    $"ジョブ '{jobName}' が正常に完了しました。",
-                    ToolTipIcon.Info
-                ));
-            }
-        }
-
-        public void ShowJobFailure(string jobName, string error, bool isManual)
-        {
-            if (isManual || _configManager.Config.Notification.OnFailure)
-            {
-                NotificationRequested?.Invoke(this, new NotificationEventArgs(
-                    "ジョブ実行失敗",
-                    $"ジョブ '{jobName}' の実行に失敗しました。\n{error}",
-                    ToolTipIcon.Error
-                ));
-            }
-        }
-
-        public void ShowAppNotification(string title, string message, ToolTipIcon icon = ToolTipIcon.Info)
-        {
-            NotificationRequested?.Invoke(this, new NotificationEventArgs(title, message, icon));
-        }
+    public void ShowAppNotification(string title, string message, ToolTipIcon icon = ToolTipIcon.Info)
+    {
+        NotificationRequested?.Invoke(this, new NotificationEventArgs(title, message, icon));
     }
 }
