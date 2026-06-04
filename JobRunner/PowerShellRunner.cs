@@ -153,14 +153,18 @@ public class PowerShellRunner : IJobRunner
         }
     }
 
+    private const int CancellationWaitIntervalMs = 50;
+    private const int CancellationMaxWaitMs = 2000;
+
     private static async Task WaitForCancellationCleanupAsync(Process process)
     {
         int waitTries = 0;
-        while (waitTries < 40)
+        int maxTries = CancellationMaxWaitMs / CancellationWaitIntervalMs;
+        while (waitTries < maxTries)
         {
             try { process.Refresh(); } catch { }
             if (process.HasExited) break;
-            await Task.Delay(50).ConfigureAwait(false);
+            await Task.Delay(CancellationWaitIntervalMs).ConfigureAwait(false);
             waitTries++;
         }
     }

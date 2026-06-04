@@ -35,7 +35,8 @@ public class JobManager(NotificationManager notificationManager)
     public void CancelAllJobs()
     {
         LogManager.LogApp("Canceling all running jobs...");
-        foreach (var key in _runningJobs.Keys)
+        var keys = new System.Collections.Generic.List<string>(_runningJobs.Keys);
+        foreach (var key in keys)
         {
             CancelJob(key);
         }
@@ -124,6 +125,9 @@ public class JobManager(NotificationManager notificationManager)
 
             var duration = DateTime.Now - startTime;
 
+            bool isTimeout = attemptCts.Token.IsCancellationRequested && !cts.Token.IsCancellationRequested;
+            bool isUserCancel = cts.Token.IsCancellationRequested;
+
             if (result.Success)
             {
                 LogManager.LogApp($"Job '{job.Id}' completed successfully on attempt {attempt}. Duration: {duration:g}");
@@ -134,12 +138,17 @@ public class JobManager(NotificationManager notificationManager)
             }
 
             string errorDetails = result.Exception != null ? result.Exception.Message : result.Message;
+            if (isTimeout)
+            {
+                errorDetails = $"Job timed out after {job.TimeoutSeconds} seconds.";
+            }
+
             LogManager.LogApp($"Job '{job.Id}' failed on attempt {attempt}: {errorDetails}", "ERROR");
             LogManager.LogJob(job.Id, $"Attempt {attempt} failed: {errorDetails}", isError: true);
 
-            if (cts.Token.IsCancellationRequested || attempt >= maxAttempts)
+            if (isUserCancel || isTimeout || attempt >= maxAttempts)
             {
-                LogManager.LogApp($"Job '{job.Id}' execution failed definitively.");
+                LogManager.LogApp($"Job '{job.Id}' execution failed definitively (UserCancel={isUserCancel}, Timeout={isTimeout}).");
                 LogManager.LogJob(job.Id, "=== Job Failed Definitively ===", isError: true);
                 
                 notificationManager.ShowJobFailure(job.Name, errorDetails, isManual);

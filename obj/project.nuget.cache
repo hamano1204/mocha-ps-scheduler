@@ -1,10 +1,15 @@
 {
   "version": 2,
-  "dgSpecHash": "j4HkpeHzfA8=",
+  "dgSpecHash": "QbZOW1AN63M=",
   "success": true,
   "projectFilePath": "C:\\Users\\haman_9\\dev\\mocha-ps-scheduler\\mocha-ps-scheduler.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\haman_9\\.nuget\\packages\\ncrontab\\3.4.0\\ncrontab.3.4.0.nupkg.sha512"
+    "C:\\Users\\haman_9\\.nuget\\packages\\microsoft.net.illink.tasks\\10.0.6\\microsoft.net.illink.tasks.10.0.6.nupkg.sha512",
+    "C:\\Users\\haman_9\\.nuget\\packages\\ncrontab\\3.4.0\\ncrontab.3.4.0.nupkg.sha512",
+    "C:\\Users\\haman_9\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\10.0.6\\microsoft.netcore.app.runtime.win-x64.10.0.6.nupkg.sha512",
+    "C:\\Users\\haman_9\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\10.0.6\\microsoft.windowsdesktop.app.runtime.win-x64.10.0.6.nupkg.sha512",
+    "C:\\Users\\haman_9\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\10.0.6\\microsoft.aspnetcore.app.runtime.win-x64.10.0.6.nupkg.sha512",
+    "C:\\Users\\haman_9\\.nuget\\packages\\microsoft.netcore.app.crossgen2.win-x64\\10.0.6\\microsoft.netcore.app.crossgen2.win-x64.10.0.6.nupkg.sha512"
   ],
   "logs": []
 }

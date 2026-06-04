@@ -6,7 +6,7 @@ public static class JobRunnerFactory
 {
     public static IJobRunner CreateRunner(string jobType)
     {
-        return jobType.ToLowerInvariant() switch
+        return (jobType ?? string.Empty).ToLowerInvariant() switch
         {
             "powershell" => new PowerShellRunner(),
             // 将来的に "batch" や "python" を追加可能

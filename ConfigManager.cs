@@ -119,6 +119,7 @@ public class ConfigManager : IDisposable
 
     public void SaveConfig(AppConfig config)
     {
+        AppConfig? configToNotify = null;
         lock (_lock)
         {
             try
@@ -134,7 +135,7 @@ public class ConfigManager : IDisposable
                 File.WriteAllText(ConfigPath, json);
 
                 LogManager.LogApp("Config saved successfully.");
-                ConfigChanged?.Invoke(this, Config);
+                configToNotify = _config.Clone();
             }
             catch (Exception ex)
             {
@@ -147,6 +148,11 @@ public class ConfigManager : IDisposable
                     _watcher.EnableRaisingEvents = true;
                 }
             }
+        }
+
+        if (configToNotify is not null)
+        {
+            ConfigChanged?.Invoke(this, configToNotify);
         }
     }
 

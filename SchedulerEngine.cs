@@ -105,7 +105,7 @@ public class SchedulerEngine : IDisposable
                 }
                 catch (Exception ex)
                 {
-                    LogManager.LogApp($"Failed to parse schedule '{job.Schedule}' for job '{job.Id}': {ex.Message}", "ERROR");
+                    LogManager.LogApp($"Failed to parse schedule '{job.Schedule}' for job '{job.Id}' (requires 6-field cron format containing seconds: second minute hour day month day-of-week): {ex.Message}", "ERROR");
                 }
             }
         }
@@ -157,10 +157,17 @@ public class SchedulerEngine : IDisposable
             {
                 break;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 LogManager.LogApp($"Error in scheduler execution loop: {ex.Message}", "ERROR");
-                await Task.Delay(5000, cancellationToken); // エラー時は5秒ウェイトを入れる
+                try
+                {
+                    await Task.Delay(5000, cancellationToken); // エラー時は5秒ウェイトを入れる
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         }
     }
