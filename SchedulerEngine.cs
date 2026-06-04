@@ -87,7 +87,7 @@ public class SchedulerEngine : IDisposable
             var now = DateTime.Now;
             foreach (var job in _configManager.Config.Jobs)
             {
-                if (string.IsNullOrEmpty(job.Id) || string.IsNullOrEmpty(job.Schedule))
+                if (string.IsNullOrEmpty(job.Id) || string.IsNullOrEmpty(job.Schedule) || !job.Enabled)
                 {
                     continue;
                 }
@@ -149,8 +149,9 @@ public class SchedulerEngine : IDisposable
                     _ = _jobManager.TriggerJobAsync(job);
                 }
 
-                // 1秒間隔でチェック
-                await Task.Delay(1000, cancellationToken);
+                // 次の秒の開始境界まで待機 (時間の累積ドリフトを防ぐ)
+                var delay = 1000 - DateTime.Now.Millisecond;
+                await Task.Delay(delay, cancellationToken);
             }
             catch (OperationCanceledException)
             {

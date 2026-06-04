@@ -11,6 +11,8 @@ namespace MochaScheduler
         private readonly ConfigManager _configManager;
         private readonly JobManager _jobManager;
         private DataGridView _dataGridView = null!;
+        private string? _currentSortColumn = null;
+        private SortOrder _currentSortOrder = SortOrder.None;
         private Button _btnRun = null!;
         private Button _btnStopJob = null!;
         private Button _btnOpenLog = null!;
@@ -38,7 +40,7 @@ namespace MochaScheduler
             this.Size = new System.Drawing.Size(950, 500);
             this.MinimumSize = new System.Drawing.Size(750, 400);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Icon = System.Drawing.SystemIcons.Application;
+            this.Icon = Program.AppIcon;
 
             // レイアウト用のメインパネル (TableLayoutPanel)
             var mainPanel = new TableLayoutPanel
@@ -65,6 +67,13 @@ namespace MochaScheduler
                 BorderStyle = BorderStyle.None,
                 RowHeadersVisible = false
             };
+            _dataGridView.ColumnHeaderMouseClick += DataGridView_ColumnHeaderMouseClick;
+            _dataGridView.SelectionChanged += DataGridView_SelectionChanged;
+
+            // DataGridView の再描画時のチラつきを防止するためにダブルバッファリングを有効化する
+            typeof(DataGridView).InvokeMember("DoubleBuffered", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.SetProperty, 
+                null, _dataGridView, new object[] { true });
 
             // ボタン配置用のフローレイアウトパネル
             var buttonPanel = new FlowLayoutPanel
@@ -146,6 +155,9 @@ namespace MochaScheduler
 
             // 閉じるボタンが押された時の常駐化処理 (非表示にする)
             this.FormClosing += JobListForm_FormClosing;
+
+            // 閉じた状態から再表示された際に最新の状態を確実に反映する
+            this.VisibleChanged += (s, e) => { if (this.Visible) LoadJobData(); };
         }
 
         private void LoadJobData()
@@ -158,7 +170,7 @@ namespace MochaScheduler
                 var isRunning = _jobManager.IsJobRunning(job.Id);
                 var isCancelling = _jobManager.IsJobCancelling(job.Id);
                 
-                string statusText = "待機中";
+                string statusText = job.Enabled ? "待機中" : "無効";
                 if (isCancelling)
                 {
                     statusText = "停止処理中";
@@ -178,6 +190,19 @@ namespace MochaScheduler
                 });
             }
 
+            // ソート処理の適用
+            if (!string.IsNullOrEmpty(_currentSortColumn) && _currentSortOrder != SortOrder.None)
+            {
+                bool ascending = _currentSortOrder == SortOrder.Ascending;
+                rows.Sort((x, y) =>
+                {
+                    string valX = GetPropertyValue(x, _currentSortColumn);
+                    string valY = GetPropertyValue(y, _currentSortColumn);
+                    int cmp = string.Compare(valX, valY, StringComparison.OrdinalIgnoreCase);
+                    return ascending ? cmp : -cmp;
+                });
+            }
+
             _dataGridView.DataSource = null;
             _dataGridView.DataSource = rows;
 
@@ -192,7 +217,21 @@ namespace MochaScheduler
                 
                 // パス列などを少し広めに取る調整
                 if (_dataGridView.Columns["ScriptPath"] is { } scriptPathCol) scriptPathCol.FillWeight = 180F;
+
+                // ソートグリフの更新
+                foreach (DataGridViewColumn col in _dataGridView.Columns)
+                {
+                    if (col.DataPropertyName == _currentSortColumn)
+                    {
+                        col.HeaderCell.SortGlyphDirection = _currentSortOrder;
+                    }
+                    else
+                    {
+                        col.HeaderCell.SortGlyphDirection = SortOrder.None;
+                    }
+                }
             }
+            UpdateButtonStates();
         }
 
         private void BtnRun_Click(object? sender, EventArgs e)
@@ -408,6 +447,66 @@ namespace MochaScheduler
                 _configManager.ConfigChanged -= OnConfigChanged;
             }
             base.Dispose(disposing);
+        }
+
+        private void DataGridView_SelectionChanged(object? sender, EventArgs e)
+        {
+            UpdateButtonStates();
+        }
+
+        private void UpdateButtonStates()
+        {
+            var selectedJob = GetSelectedJobConfig();
+            if (selectedJob == null)
+            {
+                _btnRun.Enabled = false;
+                _btnStopJob.Enabled = false;
+                _btnOpenLog.Enabled = false;
+                _btnEditJob.Enabled = false;
+                _btnDeleteJob.Enabled = false;
+                return;
+            }
+
+            bool isRunning = _jobManager.IsJobRunning(selectedJob.Id);
+
+            _btnRun.Enabled = !isRunning;
+            _btnStopJob.Enabled = isRunning;
+            _btnOpenLog.Enabled = true;
+            _btnEditJob.Enabled = !isRunning;
+            _btnDeleteJob.Enabled = !isRunning;
+        }
+
+        private void DataGridView_ColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.ColumnIndex < 0 || e.ColumnIndex >= _dataGridView.Columns.Count) return;
+
+            var column = _dataGridView.Columns[e.ColumnIndex];
+            string propertyName = column.DataPropertyName;
+
+            if (_currentSortColumn == propertyName)
+            {
+                _currentSortOrder = _currentSortOrder == SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending;
+            }
+            else
+            {
+                _currentSortColumn = propertyName;
+                _currentSortOrder = SortOrder.Ascending;
+            }
+
+            LoadJobData();
+        }
+
+        private string GetPropertyValue(JobDisplayRow row, string propertyName)
+        {
+            return propertyName switch
+            {
+                nameof(JobDisplayRow.Id) => row.Id,
+                nameof(JobDisplayRow.Name) => row.Name,
+                nameof(JobDisplayRow.Schedule) => row.Schedule,
+                nameof(JobDisplayRow.ScriptPath) => row.ScriptPath,
+                nameof(JobDisplayRow.Status) => row.Status,
+                _ => string.Empty
+            };
         }
 
         // DataGridView バインディング用のヘルパークラス

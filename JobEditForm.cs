@@ -13,6 +13,7 @@ namespace MochaScheduler
         
         private TextBox _txtId = null!;
         private TextBox _txtName = null!;
+        private CheckBox _chkEnabled = null!;
         private TextBox _txtScriptPath = null!;
         private Button _btnBrowse = null!;
         private TextBox _txtArguments = null!;
@@ -54,19 +55,19 @@ namespace MochaScheduler
         private void InitializeComponent()
         {
             this.Text = "ジョブの追加 - Mocha PS Scheduler";
-            this.Size = new System.Drawing.Size(600, 690);
+            this.Size = new System.Drawing.Size(600, 728);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterParent;
-            this.Icon = System.Drawing.SystemIcons.Application;
+            this.Icon = Program.AppIcon;
 
             // メインのテーブルレイアウト (縦並び)
             var mainTable = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
-                RowCount = 7,
+                RowCount = 8,
                 Padding = new Padding(15)
             };
             mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130F));
@@ -75,24 +76,68 @@ namespace MochaScheduler
             // 行サイズ設定
             mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F)); // ID
             mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F)); // 名前
+            mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F)); // 有効/無効
             mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F)); // パス
             mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F)); // 引数
             mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 290F)); // スケジュール (ビルダーUI)
             mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 120F)); // タイムアウト・リトライ
             mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // ボタン
 
+            int currentRow = 0;
+
             // 1. ジョブID
-            mainTable.Controls.Add(new Label { Text = "ジョブID (半角英数字):", Anchor = AnchorStyles.Left }, 0, 0);
+            mainTable.Controls.Add(new Label { Text = "ジョブID (半角英数字):", Anchor = AnchorStyles.Left }, 0, currentRow);
             _txtId = new TextBox { Dock = DockStyle.Fill };
-            mainTable.Controls.Add(_txtId, 1, 0);
+            mainTable.Controls.Add(_txtId, 1, currentRow);
+            currentRow++;
 
             // 2. ジョブ名
-            mainTable.Controls.Add(new Label { Text = "ジョブ名:", Anchor = AnchorStyles.Left }, 0, 1);
+            mainTable.Controls.Add(new Label { Text = "ジョブ名:", Anchor = AnchorStyles.Left }, 0, currentRow);
             _txtName = new TextBox { Dock = DockStyle.Fill };
-            mainTable.Controls.Add(_txtName, 1, 1);
+            mainTable.Controls.Add(_txtName, 1, currentRow);
+            currentRow++;
+
+            // 2.5 有効状態
+            mainTable.Controls.Add(new Label { Text = "有効状態:", Anchor = AnchorStyles.Left }, 0, currentRow);
+            _chkEnabled = new CheckBox { Text = "このスケジュールを有効にする", Checked = true, Anchor = AnchorStyles.Left };
+            mainTable.Controls.Add(_chkEnabled, 1, currentRow);
+            currentRow++;
 
             // 3. スクリプトパス
-            mainTable.Controls.Add(new Label { Text = "スクリプトパス:", Anchor = AnchorStyles.Left }, 0, 2);
+            mainTable.Controls.Add(new Label { Text = "スクリプトパス:", Anchor = AnchorStyles.Left }, 0, currentRow);
+            var pathPanel = CreatePathPanel();
+            mainTable.Controls.Add(pathPanel, 1, currentRow);
+            currentRow++;
+
+            // 4. 実行引数
+            mainTable.Controls.Add(new Label { Text = "実行引数:", Anchor = AnchorStyles.Left }, 0, currentRow);
+            _txtArguments = new TextBox { Dock = DockStyle.Fill };
+            mainTable.Controls.Add(_txtArguments, 1, currentRow);
+            currentRow++;
+
+            // 5. スケジュール設定ビルダー (GroupBox)
+            mainTable.Controls.Add(new Label { Text = "スケジュール設定:", Anchor = AnchorStyles.Top | AnchorStyles.Left, Padding = new Padding(0, 5, 0, 0) }, 0, currentRow);
+            var grpSchedule = CreateScheduleGroupBox();
+            mainTable.Controls.Add(grpSchedule, 1, currentRow);
+            currentRow++;
+
+            // 6. タイムアウト・リトライ GroupBox
+            mainTable.Controls.Add(new Label { Text = "高度な実行制御:", Anchor = AnchorStyles.Top | AnchorStyles.Left, Padding = new Padding(0, 5, 0, 0) }, 0, currentRow);
+            var grpAdvanced = CreateAdvancedGroupBox();
+            mainTable.Controls.Add(grpAdvanced, 1, currentRow);
+            currentRow++;
+
+            // 7. 下部ボタン
+            var buttonPanel = CreateButtonPanel();
+            mainTable.Controls.Add(buttonPanel, 1, currentRow);
+
+            this.Controls.Add(mainTable);
+            this.AcceptButton = _btnSave;
+            this.CancelButton = _btnCancel;
+        }
+
+        private TableLayoutPanel CreatePathPanel()
+        {
             var pathPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -108,16 +153,11 @@ namespace MochaScheduler
             
             pathPanel.Controls.Add(_txtScriptPath, 0, 0);
             pathPanel.Controls.Add(_btnBrowse, 1, 0);
-            mainTable.Controls.Add(pathPanel, 1, 2);
+            return pathPanel;
+        }
 
-            // 4. 実行引数
-            mainTable.Controls.Add(new Label { Text = "実行引数:", Anchor = AnchorStyles.Left }, 0, 3);
-            _txtArguments = new TextBox { Dock = DockStyle.Fill };
-            mainTable.Controls.Add(_txtArguments, 1, 3);
-
-            // 5. スケジュール設定ビルダー (GroupBox)
-            mainTable.Controls.Add(new Label { Text = "スケジュール設定:", Anchor = AnchorStyles.Top | AnchorStyles.Left, Padding = new Padding(0, 5, 0, 0) }, 0, 4);
-            
+        private GroupBox CreateScheduleGroupBox()
+        {
             var grpSchedule = new GroupBox
             {
                 Text = "実行スケジュール",
@@ -205,11 +245,11 @@ namespace MochaScheduler
             schedLayout.Controls.Add(pnlCron, 1, 3);
 
             grpSchedule.Controls.Add(schedLayout);
-            mainTable.Controls.Add(grpSchedule, 1, 4);
+            return grpSchedule;
+        }
 
-            // 6. タイムアウト・リトライ GroupBox
-            mainTable.Controls.Add(new Label { Text = "高度な実行制御:", Anchor = AnchorStyles.Top | AnchorStyles.Left, Padding = new Padding(0, 5, 0, 0) }, 0, 5);
-            
+        private GroupBox CreateAdvancedGroupBox()
+        {
             var grpAdvanced = new GroupBox { Text = "タイムアウト & リトライ", Dock = DockStyle.Fill, Padding = new Padding(5) };
             var advLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 2 };
             advLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90F));
@@ -238,9 +278,11 @@ namespace MochaScheduler
             advLayout.Controls.Add(pnlDelay, 3, 1);
 
             grpAdvanced.Controls.Add(advLayout);
-            mainTable.Controls.Add(grpAdvanced, 1, 5);
+            return grpAdvanced;
+        }
 
-            // 7. 下部ボタン
+        private FlowLayoutPanel CreateButtonPanel()
+        {
             var buttonPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -254,12 +296,8 @@ namespace MochaScheduler
 
             buttonPanel.Controls.Add(_btnCancel);
             buttonPanel.Controls.Add(_btnSave);
-
-            mainTable.Controls.Add(buttonPanel, 1, 6);
-
-            this.Controls.Add(mainTable);
-            this.AcceptButton = _btnSave;
             this.CancelButton = _btnCancel;
+            return buttonPanel;
         }
 
         private void UpdateScheduleUiState()
@@ -290,6 +328,7 @@ namespace MochaScheduler
             _txtId.Text = _editingJob.Id;
             _txtId.ReadOnly = true;
             _txtName.Text = _editingJob.Name;
+            _chkEnabled.Checked = _editingJob.Enabled;
             _txtScriptPath.Text = _editingJob.ScriptPath;
             _txtArguments.Text = _editingJob.Arguments;
             _numTimeout.Value = _editingJob.TimeoutSeconds;
@@ -492,7 +531,8 @@ namespace MochaScheduler
                 Schedule = cronExpression,
                 TimeoutSeconds = (int)_numTimeout.Value,
                 RetryCount = (int)_numRetry.Value,
-                RetryDelaySeconds = (int)_numRetryDelay.Value
+                RetryDelaySeconds = (int)_numRetryDelay.Value,
+                Enabled = _chkEnabled.Checked
             };
 
             this.DialogResult = DialogResult.OK;

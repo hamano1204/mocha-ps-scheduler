@@ -42,7 +42,7 @@ namespace MochaScheduler
             // NotifyIcon の作成
             _notifyIcon = new NotifyIcon
             {
-                Icon = SystemIcons.Application,
+                Icon = Program.AppIcon,
                 Text = "Mocha PS Scheduler (待機中)",
                 Visible = true
             };
@@ -79,6 +79,51 @@ namespace MochaScheduler
             menu.Items.Add(showListItem);
 
             // 「今すぐ実行」サブメニューの構築
+            var runSubMenu = BuildRunSubMenu();
+            menu.Items.Add(runSubMenu);
+
+            // 「実行中のジョブを停止」サブメニュー (実行中のものがある場合のみ)
+            if (runningCount > 0)
+            {
+                var stopSubMenu = BuildStopSubMenu();
+                menu.Items.Add(stopSubMenu);
+            }
+
+            menu.Items.Add(new ToolStripSeparator());
+
+            // ログフォルダを開く
+            var openLogDirItem = new ToolStripMenuItem("ログフォルダを開く", null, (s, e) => OpenLogDirectory());
+            menu.Items.Add(openLogDirItem);
+
+            // 通知設定のサブメニュー
+            var notificationSettingsSubMenu = BuildNotificationSettingsSubMenu();
+            menu.Items.Add(notificationSettingsSubMenu);
+
+            // スタートアップ自動起動の切り替え
+            var isStartupEnabled = StartupManager.IsStartupEnabled();
+            var startupItem = new ToolStripMenuItem("スタートアップ自動起動", null, (s, e) => ToggleStartup(s as ToolStripMenuItem))
+            {
+                Checked = isStartupEnabled
+            };
+            menu.Items.Add(startupItem);
+
+            menu.Items.Add(new ToolStripSeparator());
+
+            // 終了
+            var exitItem = new ToolStripMenuItem("終了", null, (s, e) => ExitApplication());
+            menu.Items.Add(exitItem);
+
+            // 古いメニューがある場合は破棄してメモリリークを防ぐ
+            var oldMenu = _notifyIcon.ContextMenuStrip;
+            _notifyIcon.ContextMenuStrip = menu;
+            oldMenu?.Dispose();
+
+            // ツールチップの文言も更新
+            _notifyIcon.Text = $"Mocha PS Scheduler\n{statusText}";
+        }
+
+        private ToolStripMenuItem BuildRunSubMenu()
+        {
             var runSubMenu = new ToolStripMenuItem("今すぐ実行");
             if (_configManager.Config.Jobs.Count == 0)
             {
@@ -106,52 +151,39 @@ namespace MochaScheduler
                     runSubMenu.DropDownItems.Add(runItem);
                 }
             }
-            menu.Items.Add(runSubMenu);
+            return runSubMenu;
+        }
 
-            // 「実行中のジョブを停止」サブメニュー (実行中のものがある場合のみ)
-            if (runningCount > 0)
+        private ToolStripMenuItem BuildStopSubMenu()
+        {
+            var stopSubMenu = new ToolStripMenuItem("実行中のジョブを停止");
+            foreach (var job in _configManager.Config.Jobs)
             {
-                var stopSubMenu = new ToolStripMenuItem("実行中のジョブを停止");
-                foreach (var job in _configManager.Config.Jobs)
+                if (_jobManager.IsJobRunning(job.Id))
                 {
-                    if (_jobManager.IsJobRunning(job.Id))
-                    {
-                        var jobName = string.IsNullOrEmpty(job.Name) ? job.Id : job.Name;
-                        var stopItem = new ToolStripMenuItem(jobName);
-                        stopItem.Click += (s, e) => _jobManager.CancelJob(job.Id);
-                        stopSubMenu.DropDownItems.Add(stopItem);
-                    }
+                    var jobName = string.IsNullOrEmpty(job.Name) ? job.Id : job.Name;
+                    var stopItem = new ToolStripMenuItem(jobName);
+                    stopItem.Click += (s, e) => _jobManager.CancelJob(job.Id);
+                    stopSubMenu.DropDownItems.Add(stopItem);
                 }
-                menu.Items.Add(stopSubMenu);
             }
+            return stopSubMenu;
+        }
 
-            menu.Items.Add(new ToolStripSeparator());
-
-            // ログフォルダを開く
-            var openLogDirItem = new ToolStripMenuItem("ログフォルダを開く", null, (s, e) => OpenLogDirectory());
-            menu.Items.Add(openLogDirItem);
-
-            // スタートアップ自動起動の切り替え
-            var isStartupEnabled = StartupManager.IsStartupEnabled();
-            var startupItem = new ToolStripMenuItem("スタートアップ自動起動", null, (s, e) => ToggleStartup(s as ToolStripMenuItem))
+        private ToolStripMenuItem BuildNotificationSettingsSubMenu()
+        {
+            var notificationSettingsSubMenu = new ToolStripMenuItem("通知設定");
+            var successNotifyItem = new ToolStripMenuItem("成功時に通知する", null, (s, e) => ToggleSuccessNotification(s as ToolStripMenuItem))
             {
-                Checked = isStartupEnabled
+                Checked = _configManager.Config.Notification.OnSuccess
             };
-            menu.Items.Add(startupItem);
-
-            menu.Items.Add(new ToolStripSeparator());
-
-            // 終了
-            var exitItem = new ToolStripMenuItem("終了", null, (s, e) => ExitApplication());
-            menu.Items.Add(exitItem);
-
-            // 古いメニューがある場合は破棄してメモリリークを防ぐ
-            var oldMenu = _notifyIcon.ContextMenuStrip;
-            _notifyIcon.ContextMenuStrip = menu;
-            oldMenu?.Dispose();
-
-            // ツールチップの文言も更新
-            _notifyIcon.Text = $"Mocha PS Scheduler\n{statusText}";
+            var failureNotifyItem = new ToolStripMenuItem("失敗時に通知する", null, (s, e) => ToggleFailureNotification(s as ToolStripMenuItem))
+            {
+                Checked = _configManager.Config.Notification.OnFailure
+            };
+            notificationSettingsSubMenu.DropDownItems.Add(successNotifyItem);
+            notificationSettingsSubMenu.DropDownItems.Add(failureNotifyItem);
+            return notificationSettingsSubMenu;
         }
 
         private void ShowJobListForm()
@@ -202,6 +234,22 @@ namespace MochaScheduler
                     MessageBoxIcon.Error
                 );
             }
+        }
+
+        private void ToggleSuccessNotification(ToolStripMenuItem? item)
+        {
+            if (item == null) return;
+            var currentConfig = _configManager.Config.Clone();
+            currentConfig.Notification.OnSuccess = !item.Checked;
+            _configManager.SaveConfig(currentConfig);
+        }
+
+        private void ToggleFailureNotification(ToolStripMenuItem? item)
+        {
+            if (item == null) return;
+            var currentConfig = _configManager.Config.Clone();
+            currentConfig.Notification.OnFailure = !item.Checked;
+            _configManager.SaveConfig(currentConfig);
         }
 
         private void OnNotificationRequested(object? sender, NotificationManager.NotificationEventArgs e)

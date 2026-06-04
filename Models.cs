@@ -83,6 +83,9 @@ public class JobConfig
     [JsonPropertyName("executablePath")]
     public string ExecutablePath { get; set; } = string.Empty;
 
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; } = true;
+
     public JobConfig Clone()
     {
         return new JobConfig
@@ -96,7 +99,8 @@ public class JobConfig
             TimeoutSeconds = this.TimeoutSeconds,
             RetryCount = this.RetryCount,
             RetryDelaySeconds = this.RetryDelaySeconds,
-            ExecutablePath = this.ExecutablePath
+            ExecutablePath = this.ExecutablePath,
+            Enabled = this.Enabled
         };
     }
 }

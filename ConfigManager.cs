@@ -152,8 +152,12 @@ public class ConfigManager : IDisposable
 
     public void Dispose()
     {
-        _watcher?.Dispose();
-        _debounceTimer?.Dispose();
+        lock (_lock)
+        {
+            _watcher?.Dispose();
+            _debounceTimer?.Dispose();
+            _debounceTimer = null;
+        }
         GC.SuppressFinalize(this);
     }
 }
