@@ -125,7 +125,7 @@
     "C:\\Users\\haman_9\\.nuget\\packages\\": {}
   },
   "project": {
-    "version": "1.0.0",
+    "version": "0.1.0",
     "restore": {
       "projectUniqueName": "C:\\Users\\haman_9\\dev\\mocha-ps-scheduler\\mocha-ps-scheduler.csproj",
       "projectName": "mocha-ps-scheduler",
